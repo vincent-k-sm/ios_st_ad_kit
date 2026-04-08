@@ -53,5 +53,7 @@ public struct AdConfiguration {
 
     public var hasMetaConfig: Bool {
         return !self.metaBannerPlacementId.isEmpty
+            || !self.metaInterstitialPlacementId.isEmpty
+            || !self.metaRewardedPlacementId.isEmpty
     }
 }
