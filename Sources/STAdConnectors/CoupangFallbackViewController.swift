@@ -17,33 +17,6 @@ final class CoupangFallbackViewController: UIViewController {
         return view
     }()
 
-    private lazy var topBarView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.65)
-        return view
-    }()
-
-    private lazy var countdownLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 14, weight: .medium)
-        return label
-    }()
-
-    private lazy var closeButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("닫기", for: .normal)
-        button.setTitleColor(.white, for: .normal)
-        button.setTitleColor(UIColor.white.withAlphaComponent(0.35), for: .disabled)
-        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        button.isEnabled = false
-        button.addTarget(self, action: #selector(self.didTapClose), for: .touchUpInside)
-        return button
-    }()
-
     private lazy var disclosureView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -63,9 +36,9 @@ final class CoupangFallbackViewController: UIViewController {
 
     // MARK: - Data
 
+    /// 쿠팡 파트너스는 CPS(클릭 후 구매) 모델이라 노출 시간이 수익에 영향 없음.
+    /// 카운트다운/강제 시청은 무의미하며, 사용자 자율(즉시 닫기 가능)이 클릭률 측면에서 더 유리.
     private let configuration: CoupangFallbackConfiguration
-    private var remainingSeconds: Int
-    private var timer: Timer?
     private var onRewarded: (() -> Void)?
     private var onDismissed: (() -> Void)?
 
@@ -77,75 +50,62 @@ final class CoupangFallbackViewController: UIViewController {
         onDismissed: @escaping () -> Void
     ) {
         self.configuration = configuration
-        self.remainingSeconds = Int(configuration.displayDuration)
         self.onRewarded = onRewarded
         self.onDismissed = onDismissed
         super.init(nibName: nil, bundle: nil)
-        self.modalPresentationStyle = .fullScreen
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    deinit {
-        self.timer?.invalidate()
-    }
+    deinit { }
 
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.setupNavigationItem()
         self.setupUI()
         self.loadURL()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        self.startCountdown()
-    }
-
     // MARK: - Setup Methods
 
+    private func setupNavigationItem() {
+        let closeButton = UIBarButtonItem(
+            barButtonSystemItem: .close,
+            target: self,
+            action: #selector(self.didTapClose)
+        )
+        self.navigationItem.rightBarButtonItem = closeButton
+        self.navigationItem.title = "광고"
+    }
+
     private func setupUI() {
-        self.view.backgroundColor = .black
+        self.view.backgroundColor = .systemBackground
         self.disclosureLabel.text = self.configuration.disclosureText
 
         self.view.addSubview(self.webView)
-        self.view.addSubview(self.topBarView)
-        self.topBarView.addSubview(self.countdownLabel)
-        self.topBarView.addSubview(self.closeButton)
         self.view.addSubview(self.disclosureView)
         self.disclosureView.addSubview(self.disclosureLabel)
 
+        let safe = self.view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            self.webView.topAnchor.constraint(equalTo: self.view.topAnchor),
-            self.webView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
-            self.webView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            self.webView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            self.webView.topAnchor.constraint(equalTo: safe.topAnchor),
+            self.webView.bottomAnchor.constraint(equalTo: self.disclosureView.topAnchor),
+            self.webView.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
+            self.webView.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
 
-            self.topBarView.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor),
-            self.topBarView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            self.topBarView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
-            self.topBarView.heightAnchor.constraint(equalToConstant: 44),
-
-            self.countdownLabel.leadingAnchor.constraint(equalTo: self.topBarView.leadingAnchor, constant: 16),
-            self.countdownLabel.centerYAnchor.constraint(equalTo: self.topBarView.centerYAnchor),
-
-            self.closeButton.trailingAnchor.constraint(equalTo: self.topBarView.trailingAnchor, constant: -16),
-            self.closeButton.centerYAnchor.constraint(equalTo: self.topBarView.centerYAnchor),
-
-            self.disclosureView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            self.disclosureView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
-            self.disclosureView.bottomAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.bottomAnchor),
+            self.disclosureView.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
+            self.disclosureView.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
+            self.disclosureView.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
 
             self.disclosureLabel.topAnchor.constraint(equalTo: self.disclosureView.topAnchor, constant: 8),
             self.disclosureLabel.bottomAnchor.constraint(equalTo: self.disclosureView.bottomAnchor, constant: -8),
             self.disclosureLabel.leadingAnchor.constraint(equalTo: self.disclosureView.leadingAnchor, constant: 12),
             self.disclosureLabel.trailingAnchor.constraint(equalTo: self.disclosureView.trailingAnchor, constant: -12),
         ])
-
-        self.updateCountdownLabel()
     }
 
     private func loadURL() {
@@ -153,38 +113,12 @@ final class CoupangFallbackViewController: UIViewController {
         self.webView.load(request)
     }
 
-    private func startCountdown() {
-        self.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true, block: { [weak self] _ in
-            guard let self = self else { return }
-            self.remainingSeconds -= 1
-            self.updateCountdownLabel()
-
-            if self.remainingSeconds <= 0 {
-                self.timer?.invalidate()
-                self.timer = nil
-                self.onRewarded?()
-                self.onRewarded = nil
-                self.closeButton.isEnabled = true
-            }
-        })
-    }
-
-    private func updateCountdownLabel() {
-        if self.remainingSeconds > 0 {
-            self.countdownLabel.text = "\(self.remainingSeconds)초 남음"
-        }
-        else {
-            self.countdownLabel.text = ""
-        }
-    }
-
     // MARK: - Actions
 
     @objc private func didTapClose() {
-        self.timer?.invalidate()
-        self.timer = nil
         let dismissed = self.onDismissed
         self.onDismissed = nil
+        self.onRewarded = nil
         self.dismiss(animated: true, completion: {
             dismissed?()
         })

@@ -34,6 +34,8 @@ public final class CoupangPartnersInterstitialConnector: AdInterstitialPresentin
             onRewarded: { },
             onDismissed: completion
         )
-        viewController.present(vc, animated: true)
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .fullScreen
+        viewController.present(nav, animated: true)
     }
 }

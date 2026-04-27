@@ -38,6 +38,8 @@ public final class CoupangPartnersRewardedConnector: AdRewardedPresenting {
             onRewarded: onRewarded,
             onDismissed: onDismissed
         )
-        viewController.present(vc, animated: true)
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .fullScreen
+        viewController.present(nav, animated: true)
     }
 }
