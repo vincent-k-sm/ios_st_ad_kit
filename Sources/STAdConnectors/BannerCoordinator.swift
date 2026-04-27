@@ -59,7 +59,7 @@ public final class BannerCoordinator {
     /// 사이클 정지 + cooldown 타이머 취소 + 활성 배너 nil 알림
     public func stop() {
         self.cancelNextCycle()
-        self.onActiveBannerChanged?(nil)
+        self.notifyActiveBanner(nil)
     }
 
     // MARK: - Internal
@@ -80,7 +80,7 @@ public final class BannerCoordinator {
         STAdLogger.debug("[Coordinator] primary 슬롯 시작")
         self.primary.reset()
         let view = self.primary.createBannerView(rootViewController: root)
-        self.onActiveBannerChanged?(view)
+        self.notifyActiveBanner(view)
     }
 
     private func activateSecondary() {
@@ -91,7 +91,7 @@ public final class BannerCoordinator {
         STAdLogger.debug("[Coordinator] secondary 슬롯 시작")
         secondary.reset()
         let view = secondary.createBannerView(rootViewController: root)
-        self.onActiveBannerChanged?(view)
+        self.notifyActiveBanner(view)
     }
 
     private func handleExhausted(slot: Slot) {
@@ -113,7 +113,7 @@ public final class BannerCoordinator {
     private func scheduleNextCycle() {
         self.cancelNextCycle()
         STAdLogger.warning("[Coordinator] 모든 슬롯 소진 -> \(self.cooldown)초 후 사이클 재시작")
-        self.onActiveBannerChanged?(nil)
+        self.notifyActiveBanner(nil)
 
         let work = DispatchWorkItem(block: { [weak self] in
             guard let self = self else { return }
@@ -126,6 +126,20 @@ public final class BannerCoordinator {
     private func cancelNextCycle() {
         self.nextCycleWorkItem?.cancel()
         self.nextCycleWorkItem = nil
+    }
+
+    /// onActiveBannerChanged 콜백을 항상 메인 스레드에서 직렬로 호출.
+    /// connector(Google/Meta SDK)의 ad delegate 콜백이 어느 스레드에서 발화되든
+    /// 호출 측(BrowserViewController 등)이 UIKit 작업을 안전하게 수행하도록 보장.
+    private func notifyActiveBanner(_ view: UIView?) {
+        if Thread.isMainThread {
+            self.onActiveBannerChanged?(view)
+        }
+        else {
+            DispatchQueue.main.async(execute: { [weak self] in
+                self?.onActiveBannerChanged?(view)
+            })
+        }
     }
 }
 

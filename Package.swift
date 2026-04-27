@@ -31,7 +31,8 @@ let package = Package(
     targets: [
         .target(
             name: "STAdCore",
-            path: "Sources/STAdCore"
+            path: "Sources/STAdCore",
+            publicHeadersPath: "."
         ),
         .target(
             name: "STAdConnectors",
